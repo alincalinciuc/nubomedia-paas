@@ -10,7 +10,7 @@ export DEBIAN_FRONTEND=noninteractive
 _dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 _nubomedia_paas_base_repo="https://github.com/fhg-fokus-nubomedia/nubomedia-paas.git"
-_tag="develop"
+#_tag="develop"
 #_tag="tags/1.1"
 
 
@@ -60,6 +60,12 @@ function compileProperties {
     read -p "Enter the PaaS ip [https://localhost:8443]: " baseUrl
     if [[ "$baseUrl" != "" ]]; then
         $_ex 'sed -i "s|openshift.baseURL=https://localhost:8443|openshift.baseURL=$baseUrl|g" /etc/nubomedia/paas.properties'
+    fi
+
+    export domainName
+    read -p "Enter the domain name for the applications [example.com]: " domainName
+    if [[ "$domainName" != "" ]]; then
+        $_ex 'sed -i "s|openshift.domainName=example.com|openshift.domainName=$domainName|g" /etc/nubomedia/paas.properties'
     fi
 
     export paasIp
@@ -173,7 +179,7 @@ function bootstrap {
     compileProperties
     # deploy and compile Nubomedia PaaS API
     deployNubomediaPaaS
-    echo "Nubomedia PaaS API is up and running now. Check screen -x nubomedia-paas..."
+    echo "Nubomedia PaaS API is up and running now. Check screen -x paas-manager..."
 
 }
 

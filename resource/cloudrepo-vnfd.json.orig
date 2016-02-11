@@ -20,7 +20,7 @@
   "vdu":[
     {
       "vm_image":[
-        "cloud-repository"
+        "ubuntu-image-14.04-11-15"
       ],
       "vimInstanceName":"nubomedia-vim",
       "scale_in_out":4,
@@ -62,7 +62,7 @@
   ],
   "deployment_flavour":[
     {
-      "flavour_key":"m3.medium"
+      "flavour_key":"m1.small"
     }
   ],
   "vnfPackageLocation":"https://github.com/tub-nubomedia/cloud-repository-scripts.git"

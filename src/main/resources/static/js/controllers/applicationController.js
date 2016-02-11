@@ -5,7 +5,7 @@ angular.module('app').controller('applicationsCtrl', function ($scope, http, $ro
 
         $scope.alerts = [];
         $scope.apllications = [];
-        $scope.flavors = ["SMALL", "MEDIUM", "LARGE"];
+        $scope.flavors = ["MEDIUM", "LARGE"];
         $scope._qualityOfService = ["BRONZE", "SILVER", "GOLD"];
         $scope._turnServer = {
             'turnServerUrl': '',
@@ -37,7 +37,7 @@ angular.module('app').controller('applicationsCtrl', function ($scope, http, $ro
                 $scope.infosObj = angular.copy(res.data);
             });
 
-        $scope.getInfos = function(key){
+        $scope.getInfos = function (key) {
             console.log($scope.infosObj[key]);
             console.log(key);
             $scope.textInfo = $scope.infosObj[key];
@@ -122,7 +122,7 @@ angular.module('app').controller('applicationsCtrl', function ($scope, http, $ro
             }
             $scope.cloudRepository = {
                 cloudRepoPort: '27018',
-                cloudRepoSecurity: true
+                cloudRepoSecurity: false
             };
             if ($scope.appCreate.cloudRepository) {
                 $scope.appCreate.cloudRepoPort = $scope.cloudRepository.cloudRepoPort;
@@ -205,6 +205,24 @@ angular.module('app').controller('applicationsCtrl', function ($scope, http, $ro
                 });
         };
 
+        $scope.loadAppLog = function () {
+            http.get(url + $routeParams.applicationId + '/logs')
+                .success(function (response) {
+
+                    $scope.log = $sce.trustAsHtml(n2br(response));
+                })
+                .error(function (data, status) {
+                    showError(status, data);
+                });
+        };
+
+        $scope.checkStatus = function () {
+            console.log(($scope.application.status !== 'RUNNING'));
+            if ($scope.application.status !== 'RUNNING')
+                return true;
+            else return false;
+        };
+
         $scope.setFile = function (element) {
             $scope.$apply(function ($scope) {
 
@@ -223,7 +241,14 @@ angular.module('app').controller('applicationsCtrl', function ($scope, http, $ro
         };
 
         function n2br(str) {
-            return str.replace(/\n/g, "<br />");
+            str = str.replace(/(?:\\[rn]|[\r\n]+)+/g, "<br />");
+            //return str.replace(/\r\n|\r|\n//g, "<br />");
+            var x = str;
+            var r = /\\u([\d\w]{4})/gi;
+            x = x.replace(r, function (match, grp) {
+                return String.fromCharCode(parseInt(grp, 16)); } );
+            x = unescape(x);
+                return x
         }
 
         function showError(status, data) {
@@ -240,25 +265,47 @@ angular.module('app').controller('applicationsCtrl', function ($scope, http, $ro
             $('.modal').modal('hide');
         }
 
+        $scope.disableButton = false;
         $scope.classVar = 'panel-default';
+        $scope.changedTurnServerBool = function () {
+            $scope.disableButton = false;
+            $scope.classVar = 'panel-default';
+        };
         $scope.checkTurn = function () {
             console.log($scope._turnServer);
             checkTURNServer({
-                url: 'turn:'+$scope._turnServer.turnServerUrl,
+                url: 'turn:' + $scope._turnServer.turnServerUrl,
                 username: $scope._turnServer.turnServerUsername,
                 credential: $scope._turnServer.turnServerPassword
             }).then(function (bool) {
                 console.log('is TURN server active? ', bool ? 'yes' : 'no');
-                if (bool)
-                    changeDivPane('panel-success')
+                if (bool) {
+                    disableButton(false);
+                    changeDivPane('panel-success');
+                }
+                else {
+                    disableButton(true);
+                    changeDivPane('panel-danger');
+                }
 
-                else
-                    changeDivPane('panel-danger')
 
+            }).catch(function (reason) {
+                console.error.bind(console);
+                console.log(reason);
+                disableButton(true);
+            });
 
-            }).catch(console.error.bind(console));
 
         };
+        function disableButton(value) {
+            if (value)
+                if ($scope._turnServer.turnServerUsername !== '' || $scope._turnServer.turnServerPassword !== ''
+                    || $scope._turnServer.turnServerUrl !== '')
+                    $scope.$apply(function () {
+                        $scope.disableButton = value;
+                    });
+        }
+
         function changeDivPane(classValue) {
             $scope.$apply(function () {
                 $scope.classVar = classValue;
@@ -297,15 +344,6 @@ angular.module('app').controller('applicationsCtrl', function ($scope, http, $ro
             });
         }
 
-        $(document).ready(function(){
-            $('[data-toggle=tooltip]').hover(function(){
-                // on mouseenter
-                $(this).tooltip('show');
-            }, function(){
-                // on mouseleave
-                $(this).tooltip('hide');
-            });
-        });
 
 //# example usage:
 

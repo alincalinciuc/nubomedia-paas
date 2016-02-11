@@ -90,19 +90,33 @@ public class OpenbatonManager {
         OpenbatonCreateServer res = new OpenbatonCreateServer();
         res.setNsdID(targetNSD.getId());
         NetworkServiceRecord nsr = null;
-        EventEndpoint eventEndpoint = new EventEndpoint();
-        eventEndpoint.setType(EndpointType.REST);
-        eventEndpoint.setEndpoint(callbackUrl + apiPath + "/openbaton/" + appID);
-        eventEndpoint.setEvent(Action.INSTANTIATE_FINISH);
 
         nsr = nfvoRequestor.getNetworkServiceRecordAgent().create(targetNSD.getId());
         logger.debug("NSR " + nsr.toString());
         this.records.put(nsr.getId(), nsr);
-        eventEndpoint.setNetworkServiceId(nsr.getId());
+
+        EventEndpoint eventEndpointCreation = new EventEndpoint();
+        eventEndpointCreation.setType(EndpointType.REST);
+        eventEndpointCreation.setEndpoint(callbackUrl + apiPath + "/openbaton/" + appID);
+        eventEndpointCreation.setEvent(Action.INSTANTIATE_FINISH);
+
+        EventEndpoint eventEndpointError = new EventEndpoint();
+        eventEndpointError.setType(EndpointType.REST);
+        eventEndpointError.setEndpoint(callbackUrl + apiPath + "/openbaton/" + appID);
+        eventEndpointError.setEvent(Action.ERROR);
+
+        nsr = nfvoRequestor.getNetworkServiceRecordAgent().create(targetNSD.getId());
+        logger.debug("NSR " + nsr.toString());
+        this.records.put(nsr.getId(), nsr);
+        eventEndpointCreation.setNetworkServiceId(nsr.getId());
+        eventEndpointError.setNetworkServiceId(nsr.getId());
         res.setMediaServerID(nsr.getId());
 
-        eventEndpoint = this.nfvoRequestor.getEventAgent().create(eventEndpoint);
-        res.setEventID(eventEndpoint.getId());
+        eventEndpointCreation = this.nfvoRequestor.getEventAgent().create(eventEndpointCreation);
+        res.setEventAllocatedID(eventEndpointCreation.getId());
+
+        eventEndpointError = this.nfvoRequestor.getEventAgent().create(eventEndpointError);
+        res.setEventErrorID(eventEndpointError.getId());
 
         logger.debug("Result " + res.toString());
         return res;
@@ -288,7 +302,7 @@ public class OpenbatonManager {
 
                 if (turnServerActivate) {
                     ConfigurationParameter cpTurnActivate = new ConfigurationParameter();
-                    cpTurnActivate.setConfKey("mediaserver.stun.url");
+                    cpTurnActivate.setConfKey("mediaserver.turn-server.activate");
                     cpTurnActivate.setValue("true");
                     cps.add(cpTurnActivate);
 
@@ -298,7 +312,7 @@ public class OpenbatonManager {
                             throw new turnServerException("No Authentication for Turn Server");
                         }
                         ConfigurationParameter cpIp = new ConfigurationParameter();
-                        cpIp.setConfKey("mediaserver.stun.url");
+                        cpIp.setConfKey("mediaserver.turn-server.url");
                         cpIp.setValue(mediaServerTurnIP);
                         cps.add(cpIp);
 
@@ -312,6 +326,12 @@ public class OpenbatonManager {
                         cpPassword.setValue(mediaServerTurnPassword);
                         cps.add(cpPassword);
                     }
+                }
+                else{
+                    ConfigurationParameter cpTurnActivate = new ConfigurationParameter();
+                    cpTurnActivate.setConfKey("mediaserver.turn-server.activate");
+                    cpTurnActivate.setValue("false");
+                    cps.add(cpTurnActivate);
                 }
 
                 if (stunServerActivate){
@@ -335,6 +355,11 @@ public class OpenbatonManager {
                         cps.add(cpStunPort);
                     }
 
+                }else{
+                    ConfigurationParameter cpStunAct = new ConfigurationParameter();
+                    cpStunAct.setConfKey("mediaserver.stun-server.activate");
+                    cpStunAct.setValue("false");
+                    cps.add(cpStunAct);
                 }
 
                 configuration.setConfigurationParameters(cps);

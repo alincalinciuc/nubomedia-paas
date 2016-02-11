@@ -12,6 +12,7 @@ import org.project.openbaton.nubomedia.api.openshift.json.RouteConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,7 +37,6 @@ public class OpenshiftManager {
     @Autowired private ServiceManager serviceManager;
     @Autowired private RouteManager routeManager;
     @Autowired private AuthenticationManager authManager;
-//    private Properties config;
     @ Autowired private OpenshiftProperties properties;
     private Logger logger;
     private String openshiftBaseURL;
@@ -45,7 +45,6 @@ public class OpenshiftManager {
 
     @PostConstruct
     private void init() throws IOException {
-//        this.config = ConfigReader.loadProperties();
         this.logger = LoggerFactory.getLogger(this.getClass());
         this.openshiftBaseURL = properties.getBaseURL() + "/oapi/v1/namespaces/";
         this.kubernetesBaseURL = properties.getBaseURL() + "/api/v1/namespaces/";
@@ -91,7 +90,7 @@ public class OpenshiftManager {
             return appBuilEntity.getBody();
         }
 
-        appBuilEntity = routeManager.makeRoute(openshiftBaseURL, appID, appName, namespace, creationHeader);
+        appBuilEntity = routeManager.makeRoute(openshiftBaseURL, appID, appName, namespace, properties.getDomainName(), creationHeader);
         if(!appBuilEntity.getStatusCode().is2xxSuccessful()){
             logger.debug("Failed creation of route " + appBuilEntity.toString());
             return appBuilEntity.getBody();
@@ -117,7 +116,6 @@ public class OpenshiftManager {
         res = deploymentManager.deleteDeployment(openshiftBaseURL, appName, namespace, deleteHeader);
         if (!res.is2xxSuccessful()) return res;
 
-        //FIX for FAIL BUILD
         res = deploymentManager.deletePodsRC(kubernetesBaseURL, appName, namespace, deleteHeader);
         if (!res.is2xxSuccessful() && !res.equals(HttpStatus.NOT_FOUND)) return res;
         if (res.equals(HttpStatus.NOT_FOUND)) logger.debug("No Replication controller, build probably failed");
@@ -163,9 +161,21 @@ public class OpenshiftManager {
             case BUILD_OK:
                 res = deploymentManager.getDeployStatus(kubernetesBaseURL,appName,namespace,authHeader);
                 break;
+            case PAAS_RESOURCE_MISSING:
+                res = BuildingStatus.PAAS_RESOURCE_MISSING;
+                break;
         }
 
         return res;
+    }
+
+    public String getApplicationLog(String token, String appName, String namespace) throws UnauthorizedException {
+
+        HttpHeaders authHeader = new HttpHeaders();
+        authHeader.add("Authorization", "Bearer " + token);
+        HttpEntity<String> requestEntity = new HttpEntity<>(authHeader);
+
+        return deploymentManager.getPodLogs(kubernetesBaseURL,namespace,appName,requestEntity);
     }
 
     public String getBuildLogs(String token, String appName,String namespace) throws UnauthorizedException {
